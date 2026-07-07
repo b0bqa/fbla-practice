@@ -2,6 +2,8 @@
 
 A comprehensive study and testing application designed to help FBLA members prepare for competitive events.
 
+**[Live Demo: ](https://b0bqa.github.io/fbla-practice/)**
+
 ---
 
 ## Achievements & Recognition
