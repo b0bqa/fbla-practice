@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FBLA Test Practice</title>
 <meta name="description" content="Offline FBLA objective test trainer — practice, timed tests, review, and stats, all stored in your browser." />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#9642;</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%23D9468F%22/><text x=%2250%22 y=%2271%22 font-size=%2262%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Helvetica,Arial,sans-serif%22 font-weight=%22700%22>F</text></svg>">
+<meta name="color-scheme" content="dark light" />
+<style>html,body{margin:0;background:#191919}html[data-theme="light"],html[data-theme="light"] body{background:#fff}</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("fbla-theme")||"dark"}catch(e){document.documentElement.dataset.theme="dark"}</script>
 <script>/**
  * @license React
  * react.production.min.js
@@ -314,7 +317,7 @@ var e,a,n="function"==typeof Symbol?Symbol:{},t=n.iterator||"@@iterator",r=n.toS
 </head>
 <body>
 <div id="root"></div>
-<div id="fatal-error" style="display:none;font-family:ui-monospace,monospace;padding:24px;max-width:640px;margin:40px auto;background:#FBEAEA;border:1px solid #D23B3B;border-radius:8px;color:#14212B;">
+<div id="fatal-error" style="display:none;font-family:ui-monospace,monospace;padding:24px;max-width:640px;margin:40px auto;background:#2a1b22;border:1px solid #EC7470;border-radius:8px;color:#f1e6ea;">
   <strong>Something went wrong loading the app.</strong>
   <p id="fatal-error-msg" style="white-space:pre-wrap;font-size:13px;margin-top:10px;"></p>
 </div>
@@ -565,75 +568,227 @@ function App() {
     setScreen("timedResults");
   };
 
+  // ---------- theme (dark by default, remembered per browser) ----------
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem("fbla-theme") || "dark"; } catch { return "dark"; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("fbla-theme", theme); } catch {}
+  }, [theme]);
+
+  const testNames = useMemo(() => Object.keys(tests).sort((a, b) => a.localeCompare(b)), [tests]);
+  const goPractice = (name) => { setActiveTest(name); setDrillSet(null); setScreen("practice"); };
+
+  const crumb = {
+    home: "Library", practice: drillSet ? "Drill" : "Practice", timedSetup: "Timed test",
+    timed: "Timed test", timedResults: "Results", review: "Review", stats: "Stats",
+  }[screen] || "Library";
+
   // ---------- render ----------
   return (
     <div className="app">
       <StyleBlock />
-      <header className="hdr">
-        <div className="hdr-inner">
-          <div className="brand" onClick={() => setScreen("home")} role="button" tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && setScreen("home")}>
-            <span className="brand-mark">▚</span>
-            <div>
-              <div className="eyebrow">FBLA // OBJECTIVE TEST TRAINER</div>
-              <div className="brand-title">Test Practice</div>
-            </div>
+      <aside className="side">
+        <div className="ws" onClick={() => setScreen("home")} role="button" tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && setScreen("home")}>
+          <span className="ws-icon">F</span>
+          <div className="ws-text">
+            <div className="ws-name">FBLA Practice</div>
+            <div className="ws-sub">Objective test trainer</div>
           </div>
-          <nav className="nav">
-            <NavBtn on={screen === "home"} onClick={() => setScreen("home")}>Library</NavBtn>
-            <NavBtn on={screen === "review"} onClick={() => setScreen("review")}>
-              Review{missedList.length > 0 && <span className="pill">{missedList.length}</span>}
-            </NavBtn>
-            <NavBtn on={screen === "stats"} onClick={() => setScreen("stats")}>Stats</NavBtn>
-          </nav>
         </div>
-      </header>
 
-      <main className="main">
-        {loading ? (
-          <div className="loading mono">loading pool…</div>
-        ) : screen === "home" ? (
-          <Home tests={tests} sessions={sessions} onFiles={handleFiles} onDelete={deleteTest}
-            onPractice={(name) => { setActiveTest(name); setDrillSet(null); setScreen("practice"); }}
-            onTimed={(name) => { setActiveTest(name); setScreen("timedSetup"); }} />
-        ) : screen === "practice" ? (
-          <Practice
-            testName={drillSet ? "Missed questions" : activeTest}
-            questions={drillSet || tests[activeTest]?.questions || []}
-            drill={!!drillSet}
-            onEnd={endPractice} />
-        ) : screen === "timedSetup" ? (
-          <TimedSetup test={tests[activeTest]}
-            onStart={(cfg) => { setTimedConfig(cfg); setScreen("timed"); }}
-            onBack={() => setScreen("home")} />
-        ) : screen === "timed" ? (
-          <Timed testName={activeTest} config={timedConfig}
-            questions={tests[activeTest]?.questions || []} onEnd={endTimed} />
-        ) : screen === "timedResults" ? (
-          <TimedResults result={timedResult}
-            onDone={() => setScreen("home")}
-            onDrillWrong={() => {
-              if (timedResult?.wrongQs?.length) {
-                setDrillSet(timedResult.wrongQs);
-                setActiveTest(timedResult.testName);
-                setScreen("practice");
-              }
-            }} />
-        ) : screen === "review" ? (
-          <Review missedList={missedList} onClear={clearMissed}
-            onDrill={(items) => {
-              setDrillSet(items.map((m) => ({
-                question: m.question, answers: m.answers, correct: m.correct, correctFull: m.correctFull,
-              })));
-              setActiveTest(items[0]?.test || "Review");
-              setScreen("practice");
-            }} />
-        ) : (
-          <Stats sessions={sessions} />
+        <nav className="side-nav">
+          <NavBtn icon="book" on={screen === "home"} onClick={() => setScreen("home")}>Library</NavBtn>
+          <NavBtn icon="repeat" on={screen === "review"} onClick={() => setScreen("review")}
+            badge={missedList.length > 0 ? missedList.length : null}>Review</NavBtn>
+          <NavBtn icon="chart" on={screen === "stats"} onClick={() => setScreen("stats")}>Stats</NavBtn>
+        </nav>
+
+        {testNames.length > 0 && (
+          <div className="side-sec">
+            <div className="side-h">Tests</div>
+            {testNames.map((n) => (
+              <button className={"side-item" + (screen === "practice" && !drillSet && activeTest === n ? " on" : "")}
+                key={n} title={`Practice ${n}`} onClick={() => goPractice(n)}>
+                <span className="side-ic"><Icon name="file" /></span>
+                <span className="side-label">{n}</span>
+              </button>
+            ))}
+          </div>
         )}
-      </main>
 
-      {toast && <div className="toast mono">{toast}</div>}
+        <div className="side-foot">
+          <button className="side-item" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-pressed={theme === "dark"} title="Toggle dark mode">
+            <span className="side-ic"><Icon name={theme === "dark" ? "moon" : "sun"} /></span>
+            <span className="side-label">Dark mode</span>
+            <span className={"switch" + (theme === "dark" ? " on" : "")} aria-hidden="true" />
+          </button>
+        </div>
+      </aside>
+
+      <div className="content">
+        <div className="topbar">
+          <span className="crumb">FBLA Practice</span>
+          <span className="crumb-sep">/</span>
+          <span className="crumb cur">{crumb}</span>
+        </div>
+
+        <main className="main">
+          {loading ? (
+            <div className="loading">Loading…</div>
+          ) : screen === "home" ? (
+            <Home tests={tests} sessions={sessions} onFiles={handleFiles} onDelete={deleteTest}
+              onPractice={goPractice}
+              onTimed={(name) => { setActiveTest(name); setScreen("timedSetup"); }} />
+          ) : screen === "practice" ? (
+            <Practice
+              key={(drillSet ? "drill:" : "test:") + activeTest}
+              testName={drillSet ? "Missed questions" : activeTest}
+              questions={drillSet || tests[activeTest]?.questions || []}
+              drill={!!drillSet}
+              onEnd={endPractice} />
+          ) : screen === "timedSetup" ? (
+            <TimedSetup test={tests[activeTest]}
+              onStart={(cfg) => { setTimedConfig(cfg); setScreen("timed"); }}
+              onBack={() => setScreen("home")} />
+          ) : screen === "timed" ? (
+            <Timed testName={activeTest} config={timedConfig}
+              questions={tests[activeTest]?.questions || []} onEnd={endTimed} />
+          ) : screen === "timedResults" ? (
+            <TimedResults result={timedResult}
+              onDone={() => setScreen("home")}
+              onDrillWrong={() => {
+                if (timedResult?.wrongQs?.length) {
+                  setDrillSet(timedResult.wrongQs);
+                  setActiveTest(timedResult.testName);
+                  setScreen("practice");
+                }
+              }} />
+          ) : screen === "review" ? (
+            <Review missedList={missedList} onClear={clearMissed}
+              onDrill={(items) => {
+                setDrillSet(items.map((m) => ({
+                  question: m.question, answers: m.answers, correct: m.correct, correctFull: m.correctFull,
+                })));
+                setActiveTest(items[0]?.test || "Review");
+                setScreen("practice");
+              }} />
+          ) : (
+            <Stats sessions={sessions} />
+          )}
+        </main>
+      </div>
+
+      {toast && <div className="toast" role="status">{toast}</div>}
+    </div>
+  );
+}
+
+// ============================================================ Monotone line icons
+const ICONS = {
+  book: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>,
+  repeat: <><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></>,
+  chart: <><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></>,
+  file: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><path d="M14 2v6h6" /><path d="M16 13H8" /><path d="M16 17H8" /><path d="M10 9H8" /></>,
+  moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></>,
+  pencil: <><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></>,
+  target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+  timer: <><path d="M10 2h4" /><path d="m12 14 3-3" /><circle cx="12" cy="14" r="8" /></>,
+  flag: <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><path d="M4 22v-7" /></>,
+  upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m17 8-5-5-5 5" /><path d="M12 3v12" /></>,
+  bulb: <><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></>,
+  "check-circle": <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" /></>,
+  info: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></>,
+  check: <path d="M20 6 9 17l-5-5" />,
+  x: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+  chevron: <path d="m9 18 6-6-6-6" />,
+  clock: <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>,
+  select: <><circle cx="12" cy="12" r="10" /><path d="m8 10 4 4 4-4" /></>,
+  pie: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></>,
+  copy: <><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+  sparkle: <><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z" /><path d="M19 3v4M17 5h4" /></>,
+};
+
+function Icon({ name, size = 16, stroke = 1.75 }) {
+  return (
+    <svg className="ico" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {ICONS[name] || null}
+    </svg>
+  );
+}
+
+// ============================================================ Notion-style building blocks
+function Page({ icon, title, compact, wide, props, actions, children }) {
+  return (
+    <div className={"page" + (compact ? " compact" : "") + (wide ? " wide" : "")}>
+      <div className="cover" aria-hidden="true" />
+      <div className="page-body">
+        <div className="page-icon"><Icon name={icon} size={compact ? 26 : 38} stroke={1.5} /></div>
+        <div className="title-row">
+          <h1 className="page-title">{title}</h1>
+          {actions && <div className="title-actions">{actions}</div>}
+        </div>
+        {props && props.length > 0 && (
+          <div className="props">
+            {props.map((p) => (
+              <div className="prop" key={p.label}>
+                <span className="prop-label"><span className="prop-ic">{ICONS[p.icon] ? <Icon name={p.icon} size={14} /> : p.icon}</span>{p.label}</span>
+                <span className="prop-val">{p.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="page-content">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function Callout({ icon, title, tone, children }) {
+  return (
+    <div className={"callout" + (tone ? " " + tone : "")}>
+      <span className="callout-ic"><Icon name={icon} size={20} /></span>
+      <div className="callout-main">
+        {title && <div className="callout-title">{title}</div>}
+        {children && <div className={title ? "callout-sub" : "callout-text"}>{children}</div>}
+      </div>
+    </div>
+  );
+}
+
+const MODE_TONE = { practice: "pink", timed: "yellow", drill: "purple" };
+function ModeTag({ mode }) {
+  return <span className={"tag " + (MODE_TONE[mode] || "gray")}>{mode.charAt(0).toUpperCase() + mode.slice(1)}</span>;
+}
+
+const pctOf = (c, t) => Math.round((c / Math.max(1, t)) * 100);
+
+function SessionTable({ rows, showTime }) {
+  return (
+    <div className="table-wrap">
+      <div className={"table " + (showTime ? "cols-5" : "cols-4")} role="table">
+        <div className="tr th" role="row">
+          <span role="columnheader"><i className="th-ic"><Icon name="clock" size={13} /></i>Date</span>
+          <span role="columnheader"><i className="th-ic">Aa</i>Test</span>
+          <span role="columnheader"><i className="th-ic"><Icon name="select" size={13} /></i>Mode</span>
+          {showTime && <span role="columnheader"><i className="th-ic"><Icon name="clock" size={13} /></i>Time</span>}
+          <span role="columnheader"><i className="th-ic">#</i>Score</span>
+        </div>
+        {rows.map((s) => (
+          <div className="tr" role="row" key={s.id}>
+            <span role="cell" className="dim">{fmtDate(s.date)}</span>
+            <span role="cell" className="strong">{s.testName}</span>
+            <span role="cell"><ModeTag mode={s.mode} /></span>
+            {showTime && <span role="cell" className="dim num">{fmtTime(s.durationSec || 0)}</span>}
+            <span role="cell" className="num">{s.correct}/{s.total} · {pctOf(s.correct, s.total)}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -644,11 +799,18 @@ function Home({ tests, sessions, onFiles, onDelete, onPractice, onTimed }) {
   const [drag, setDrag] = useState(false);
   const list = Object.values(tests).sort((a, b) => a.name.localeCompare(b.name));
   const recent = sessions.slice(-3).reverse();
+  const totalQ = list.reduce((a, t) => a + t.questions.length, 0);
 
   return (
-    <div className="stack">
+    <Page icon="book" title="Test Library" props={[
+      { icon: "#", label: "Tests", value: list.length },
+      { icon: "#", label: "Questions", value: totalQ },
+      { icon: "clock", label: "Last session", value: recent[0] ? fmtDate(recent[0].date) : <span className="faint">Empty</span> },
+    ]} wide>
+      <div className="cols">
+      <div className="col-main">
       <div
-        className={"dropzone" + (drag ? " drag" : "")}
+        className={"callout drop" + (drag ? " drag" : "")}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); onFiles(e.dataTransfer.files); }}
@@ -658,31 +820,36 @@ function Home({ tests, sessions, onFiles, onDelete, onPractice, onTimed }) {
       >
         <input ref={fileRef} type="file" accept=".txt,text/plain" multiple hidden
           onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
-        <div className="drop-title">Add a practice test</div>
-        <div className="drop-sub">Drop <span className="mono">.txt</span> files here or click to browse — same format as <span className="mono">questions.txt</span></div>
-        <div className="drop-fmt mono">question → A./B./C./D. options → blank line → Answer: X</div>
+        <span className="callout-ic"><Icon name="upload" size={20} /></span>
+        <div className="callout-main">
+          <div className="callout-title">Add a practice test</div>
+          <div className="callout-sub">Drop <code>.txt</code> files here or click to browse — same format as <code>questions.txt</code></div>
+          <div className="callout-fmt">question → A./B./C./D. options → blank line → Answer: X</div>
+        </div>
       </div>
 
       {list.length === 0 ? (
-        <div className="empty">
-          <div className="empty-title">Library is empty</div>
-          <div className="empty-sub">Upload your <span className="mono">questions.txt</span> to get started. Tests you add are saved for next time.</div>
-        </div>
+        <Callout icon="bulb" title="Library is empty">
+          Upload your <code>questions.txt</code> to get started. Tests you add are saved for next time.
+        </Callout>
       ) : (
         <section>
-          <h2 className="sec-h mono">TEST LIBRARY — {list.length}</h2>
-          <div className="test-grid">
+          <h2 className="h2">Tests <span className="h-count">{list.length}</span></h2>
+          <div className="gallery">
             {list.map((t) => (
-              <div className="test-card" key={t.name}>
-                <div className="test-top">
-                  <div className="test-name">{t.name}</div>
+              <div className="g-card" key={t.name}>
+                <div className="g-preview">
+                  <span className="g-emoji"><Icon name="file" size={30} stroke={1.5} /></span>
                   <button className="icon-btn" title="Remove test" aria-label={`Remove ${t.name}`}
-                    onClick={() => onDelete(t.name)}>✕</button>
+                    onClick={() => onDelete(t.name)}><Icon name="x" size={14} /></button>
                 </div>
-                <div className="test-meta mono">{t.questions.length} questions</div>
-                <div className="test-actions">
-                  <button className="btn primary" onClick={() => onPractice(t.name)}>Practice</button>
-                  <button className="btn" onClick={() => onTimed(t.name)}>Timed test</button>
+                <div className="g-body">
+                  <div className="g-title">{t.name}</div>
+                  <div><span className="tag pink">{t.questions.length} questions</span></div>
+                  <div className="g-actions">
+                    <button className="btn primary sm" onClick={() => onPractice(t.name)}>Practice</button>
+                    <button className="btn sm" onClick={() => onTimed(t.name)}>Timed test</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -692,20 +859,157 @@ function Home({ tests, sessions, onFiles, onDelete, onPractice, onTimed }) {
 
       {recent.length > 0 && (
         <section>
-          <h2 className="sec-h mono">RECENT SESSIONS</h2>
-          <div className="recent">
-            {recent.map((s) => (
-              <div className="recent-row" key={s.id}>
-                <span className="mono dim">{fmtDate(s.date)}</span>
-                <span className="recent-name">{s.testName}</span>
-                <span className={"mode-tag " + s.mode}>{s.mode}</span>
-                <span className="mono score">{s.correct}/{s.total} · {Math.round((s.correct / Math.max(1, s.total)) * 100)}%</span>
-              </div>
-            ))}
-          </div>
+          <h2 className="h2">Recent sessions</h2>
+          <SessionTable rows={recent} />
         </section>
       )}
+      </div>
+      <HowTo />
+      </div>
+    </Page>
+  );
+}
+
+// ============================================================ How to use
+const SAMPLE_FORMAT = `What does ROI stand for?
+A. Rate of inflation
+B. Return on investment
+C. Revenue over income
+D. Risk of insolvency
+
+Answer: B
+
+
+Which business is owned by one person?
+A. Partnership
+...`;
+
+const AI_PROMPT = `I'm going to give you a practice test. Reformat it as plain text for my study app, following these rules exactly:
+
+1. Write each question's text on its own line.
+2. Put each answer choice on its own line, starting with its capital letter, a period, and a space: "A. ", "B. ", "C. ", "D. " (and "E. " if there is one).
+3. After the last choice, leave one blank line, then write "Answer: " followed by only the letter of the correct choice, for example "Answer: B".
+4. Leave two blank lines between questions.
+5. Don't number the questions. Don't add explanations, headings, bold, bullets, or anything else.
+6. Keep the wording of every question and choice exactly as written. Remove page numbers, headers, and footers.
+7. Only use answers given in the file (an answer key or marked answers). Never guess. If a question has no answer, leave it out.
+
+Put the whole result in one code block. After the code block, list any questions you left out.
+
+Example of the exact format:
+
+What does ROI stand for?
+A. Rate of inflation
+B. Return on investment
+C. Revenue over income
+D. Risk of insolvency
+
+Answer: B
+
+
+Which type of business is owned by one person?
+A. Partnership
+B. Corporation
+C. Sole proprietorship
+D. Cooperative
+
+Answer: C
+
+Here is the test:
+`;
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function AiPrompt() {
+  const [state, setState] = useState("idle"); // idle | copied | failed
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const onCopy = async () => {
+    const ok = await copyText(AI_PROMPT);
+    setState(ok ? "copied" : "failed");
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setState("idle"), 2200);
+  };
+  return (
+    <div className="ai-box">
+      <div className="ai-top">
+        <span className="ai-label"><Icon name="sparkle" size={14} /> AI prompt</span>
+        <button className={"btn sm" + (state === "copied" ? " primary" : "")} onClick={onCopy} aria-live="polite">
+          {state === "copied" ? <><Icon name="check" size={13} stroke={2.25} /> Copied</>
+            : state === "failed" ? "Select & copy below"
+            : <><Icon name="copy" size={13} /> Copy prompt</>}
+        </button>
+      </div>
+      <details className="ai-details" open={state === "failed" || undefined}>
+        <summary>Show prompt</summary>
+        <pre className="codeblock ai-pre">{AI_PROMPT}</pre>
+      </details>
     </div>
+  );
+}
+
+function HowTo() {
+  return (
+    <aside className="howto" aria-labelledby="howto-h">
+      <h2 className="howto-h" id="howto-h"><Icon name="info" size={16} /> How to use</h2>
+      <ol className="steps">
+        <li>
+          <div className="step-t">Make a test file</div>
+          <div className="step-d">A plain <code>.txt</code> file. Each question, then its lettered options, a blank line, and <code>Answer:</code> with the letter. Leave <b>two blank lines</b> between questions.</div>
+          <pre className="codeblock">{SAMPLE_FORMAT}</pre>
+        </li>
+        <li>
+          <div className="step-t">Or let AI format it</div>
+          <div className="step-d">Copy this prompt into an AI chat (ChatGPT, Claude, Gemini), then paste or attach your test file. Save what it gives back as a <code>.txt</code> file. For long tests, send about 50 questions at a time.</div>
+          <AiPrompt />
+          <div className="step-d step-warn">Spot-check a few answers against your original. AI can make mistakes.</div>
+        </li>
+        <li>
+          <div className="step-t">Add it to the library</div>
+          <div className="step-d">Drop the file on <b>Add a practice test</b>, or click it to browse. You can add several at once.</div>
+        </li>
+        <li>
+          <div className="step-t">Practice</div>
+          <div className="step-d">You see the answer right away. Questions you miss come back later in the same session. Press <kbd>A</kbd>–<kbd>E</kbd> to answer and <kbd>Enter</kbd> for the next one.</div>
+        </li>
+        <li>
+          <div className="step-t">Take a timed test</div>
+          <div className="step-d">Pick how many questions and minutes. No feedback until you submit, like the real objective test. It submits itself when time runs out.</div>
+        </li>
+        <li>
+          <div className="step-t">Review what you missed</div>
+          <div className="step-d">Every miss goes to <b>Review</b>. Drill them, and each one clears once you get it right.</div>
+        </li>
+        <li>
+          <div className="step-t">Track progress</div>
+          <div className="step-d"><b>Stats</b> shows your accuracy over time and by test.</div>
+        </li>
+      </ol>
+      <div className="howto-note">
+        <Icon name="bulb" size={15} />
+        <span>Everything is saved in this browser only. Another device or browser starts empty, and clearing site data erases it.</span>
+      </div>
+    </aside>
   );
 }
 
@@ -714,7 +1018,6 @@ function Practice({ testName, questions, drill, onEnd }) {
   const [queue, setQueue] = useState(() => shuffle(questions));
   const [reveal, setReveal] = useState(null); // {picked, correct:boolean}
   const statsRef = useRef({ attempted: new Set(), firstTry: 0, wrong: new Map(), right: new Map(), start: Date.now() });
-  const containerRef = useRef(null);
 
   const q = queue[0];
 
@@ -774,20 +1077,21 @@ function Practice({ testName, questions, drill, onEnd }) {
   }, [queue.length]);
 
   if (!questions.length) return (
-    <div className="empty"><div className="empty-title">No questions in this test</div></div>
+    <Page icon="pencil" title={testName} compact>
+      <Callout icon="bulb" title="No questions in this test" />
+    </Page>
   );
   if (!q) return null;
+  const st = statsRef.current;
 
   return (
-    <div className="quiz-wrap" ref={containerRef}>
-      <div className="quiz-head">
-        <div>
-          <div className="eyebrow">{drill ? "DRILL // MISSED QUESTIONS" : "PRACTICE MODE"}</div>
-          <div className="quiz-test">{testName}</div>
-        </div>
-        <button className="btn subtle" onClick={() => finish(false)}>End session</button>
-      </div>
-
+    <Page icon={drill ? "target" : "pencil"} title={testName} compact
+      actions={<button className="btn subtle" onClick={() => finish(false)}>End session</button>}
+      props={[
+        { icon: "select", label: "Mode", value: <ModeTag mode={drill ? "drill" : "practice"} /> },
+        { icon: "#", label: "Remaining", value: `${queue.length} question${queue.length !== 1 ? "s" : ""}` },
+        { icon: "check", label: "First try", value: `${st.firstTry} / ${st.attempted.size}` },
+      ]}>
       <div className="q-card">
         <div className="q-text">{q.question}</div>
         <div className="opts">
@@ -802,27 +1106,25 @@ function Practice({ testName, questions, drill, onEnd }) {
             }
             return (
               <button key={a} className={cls} disabled={!!reveal} onClick={() => answer(letter)}>
-                <span className="opt-letter mono">{letter}</span>
+                <span className="opt-letter">{letter}</span>
                 <span className="opt-text">{text}</span>
               </button>
             );
           })}
         </div>
         {reveal && (
-          <div className={"verdict " + (reveal.correct ? "ok" : "bad")}>
-            <span>{reveal.correct ? "Correct." : <>Incorrect — answer was <b>{q.correctFull}</b>. It'll come back around.</>}</span>
+          <div className={"verdict " + (reveal.correct ? "ok" : "bad")} aria-live="polite">
+            <span>{reveal.correct ? <><Icon name="check" size={16} stroke={2.25} /> Correct.</> : <><Icon name="x" size={16} stroke={2.25} /> Incorrect — answer was <b>{q.correctFull}</b>. It'll come back around.</>}</span>
             <button className="btn primary" onClick={next} autoFocus>Next ⏎</button>
           </div>
         )}
       </div>
 
-      <div className="console mono" aria-live="polite">
-        <span className="c-dash">------------------------------</span>
-        <span className="c-count">[{queue.length - (reveal ? 0 : 0)} question{queue.length !== 1 ? "s" : ""} remaining]</span>
-        <span className="c-stat">first-try {statsRef.current.firstTry}/{statsRef.current.attempted.size}</span>
-        <span className="c-hint">keys: A–E answer · ⏎ next</span>
+      <div className="kbd-hint">
+        <span>Keys:</span><kbd>A</kbd>–<kbd>E</kbd><span>answer</span>
+        <span className="dot">·</span><kbd>Enter</kbd><span>next</span>
       </div>
-    </div>
+    </Page>
   );
 }
 
@@ -836,29 +1138,32 @@ function TimedSetup({ test, onStart, onBack }) {
   const clampMins = Math.max(1, Math.min(240, Number(mins) || 1));
 
   return (
-    <div className="setup">
-      <div className="eyebrow">TIMED TEST // SETUP</div>
-      <h1 className="setup-title">{test.name}</h1>
-      <p className="setup-sub">Answer everything, then submit — no feedback until the end, just like the real objective test. Adjust to match your event's format.</p>
+    <Page icon="timer" title={test.name} props={[
+      { icon: "select", label: "Mode", value: <ModeTag mode="timed" /> },
+      { icon: "#", label: "Questions", value: `${max} available` },
+    ]}>
+      <Callout icon="info">
+        Answer everything, then submit — no feedback until the end, just like the real objective test. Adjust to match your event's format.
+      </Callout>
       <div className="setup-fields">
         <label className="field">
-          <span className="field-label mono">QUESTIONS (max {max})</span>
+          <span className="field-label">Questions (max {max})</span>
           <input type="number" min={1} max={max} value={count}
             onChange={(e) => setCount(e.target.value)} />
         </label>
         <label className="field">
-          <span className="field-label mono">MINUTES</span>
+          <span className="field-label">Minutes</span>
           <input type="number" min={1} max={240} value={mins}
             onChange={(e) => setMins(e.target.value)} />
         </label>
       </div>
-      <div className="setup-actions">
-        <button className="btn" onClick={onBack}>Back</button>
+      <div className="row-actions">
         <button className="btn primary big" onClick={() => onStart({ count: clampCount, minutes: clampMins })}>
           Start timer
         </button>
+        <button className="btn" onClick={onBack}>Back</button>
       </div>
-    </div>
+    </Page>
   );
 }
 
@@ -898,19 +1203,19 @@ function Timed({ testName, config, questions, onEnd }) {
   const low = left <= 60;
 
   return (
-    <div className="quiz-wrap">
-      <div className="quiz-head">
-        <div>
-          <div className="eyebrow">TIMED TEST</div>
-          <div className="quiz-test">{testName}</div>
-        </div>
-        <div className={"timer mono" + (low ? " low" : "")} aria-live={low ? "assertive" : "off"}>
+    <Page icon="timer" title={testName} compact
+      actions={
+        <div className={"timer" + (low ? " low" : "")} aria-live={low ? "assertive" : "off"}>
           {fmtTime(Math.max(0, left))}
         </div>
-      </div>
-
+      }
+      props={[
+        { icon: "select", label: "Mode", value: <ModeTag mode="timed" /> },
+        { icon: "#", label: "Answered", value: `${answered} / ${qs.length}` },
+        { icon: "clock", label: "Time limit", value: `${config.minutes} min` },
+      ]}>
       <div className="q-card">
-        <div className="q-num mono">Q{idx + 1} / {qs.length}</div>
+        <div className="q-num">Question {idx + 1} of {qs.length}</div>
         <div className="q-text">{q.question}</div>
         <div className="opts">
           {q.answers.map((a) => {
@@ -920,7 +1225,7 @@ function Timed({ testName, config, questions, onEnd }) {
               <button key={a}
                 className={"opt" + (answers[idx] === letter ? " picked" : "")}
                 onClick={() => setAnswers((p) => ({ ...p, [idx]: letter }))}>
-                <span className="opt-letter mono">{letter}</span>
+                <span className="opt-letter">{letter}</span>
                 <span className="opt-text">{text}</span>
               </button>
             );
@@ -936,32 +1241,36 @@ function Timed({ testName, config, questions, onEnd }) {
         </div>
       </div>
 
-      <div className="grid-nav">
-        {qs.map((_, i) => (
-          <button key={i}
-            className={"gcell mono" + (i === idx ? " cur" : "") + (answers[i] ? " done" : "")}
-            onClick={() => setIdx(i)} aria-label={`Question ${i + 1}${answers[i] ? ", answered" : ""}`}>
-            {i + 1}
-          </button>
-        ))}
-      </div>
-    </div>
+      <section>
+        <h2 className="h3">Jump to question</h2>
+        <div className="grid-nav">
+          {qs.map((_, i) => (
+            <button key={i}
+              className={"gcell" + (i === idx ? " cur" : "") + (answers[i] ? " done" : "")}
+              onClick={() => setIdx(i)} aria-label={`Question ${i + 1}${answers[i] ? ", answered" : ""}`}>
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      </section>
+    </Page>
   );
 }
 
 // ============================================================ Timed results
 function TimedResults({ result, onDone, onDrillWrong }) {
   if (!result) return null;
-  const pct = Math.round((result.correct / Math.max(1, result.total)) * 100);
+  const pct = pctOf(result.correct, result.total);
   return (
-    <div className="stack">
+    <Page icon="flag" title={result.testName} props={[
+      { icon: "select", label: "Mode", value: <ModeTag mode="timed" /> },
+      { icon: "#", label: "Score", value: `${result.correct} / ${result.total} correct` },
+      { icon: "clock", label: "Time used", value: `${fmtTime(result.durationSec)} of ${fmtTime(result.timeLimitSec)}` },
+    ]}>
       <div className="result-hero">
-        <div className="eyebrow">TIMED TEST // RESULTS</div>
-        <div className="result-score">
-          <span className="big-pct">{pct}%</span>
-          <span className="mono result-detail">
-            {result.correct}/{result.total} correct · {fmtTime(result.durationSec)} of {fmtTime(result.timeLimitSec)} used
-          </span>
+        <div>
+          <div className="big-pct">{pct}%</div>
+          <div className="result-detail">{result.correct}/{result.total} correct</div>
         </div>
         <div className="result-actions">
           {result.wrongQs.length > 0 && (
@@ -975,74 +1284,89 @@ function TimedResults({ result, onDone, onDrillWrong }) {
 
       {result.wrongQs.length > 0 && (
         <section>
-          <h2 className="sec-h mono">MISSED — {result.wrongQs.length}</h2>
-          <div className="stack sm">
+          <h2 className="h2">Missed <span className="h-count">{result.wrongQs.length}</span></h2>
+          <div className="miss-list">
             {result.wrongQs.map((q, i) => (
-              <div className="miss-card" key={i}>
+              <div className="miss-row" key={i}>
                 <div className="miss-q">{q.question}</div>
-                <div className="miss-a mono">
-                  {q.picked ? <>you: <span className="bad-t">{q.picked}</span> · </> : <>you: <span className="bad-t">blank</span> · </>}
-                  correct: <span className="ok-t">{q.correctFull}</span>
+                <div className="miss-a">
+                  <span>You: <span className="bad-t">{q.picked || "blank"}</span></span>
+                  <span className="dot">·</span>
+                  <span>Correct: <span className="ok-t">{q.correctFull}</span></span>
                 </div>
               </div>
             ))}
           </div>
         </section>
       )}
-    </div>
+    </Page>
   );
 }
 
 // ============================================================ Review
 function Review({ missedList, onClear, onDrill }) {
   if (missedList.length === 0) return (
-    <div className="empty">
-      <div className="empty-title">Nothing to review</div>
-      <div className="empty-sub">Questions you miss in practice or timed tests collect here. Answer one correctly in a drill and it clears itself.</div>
-    </div>
+    <Page icon="repeat" title="Review">
+      <Callout icon="check-circle" title="Nothing to review">
+        Questions you miss in practice or timed tests collect here. Answer one correctly in a drill and it clears itself.
+      </Callout>
+    </Page>
   );
 
+  const testCount = new Set(missedList.map((m) => m.test)).size;
+
   return (
-    <div className="stack">
-      <div className="review-head">
-        <div>
-          <div className="eyebrow">REVIEW // MISSED QUESTIONS</div>
-          <div className="quiz-test">{missedList.length} question{missedList.length !== 1 && "s"} to master</div>
-        </div>
-        <div className="review-actions">
-          <button className="btn primary" onClick={() => onDrill(missedList)}>Drill all</button>
-          <button className="btn subtle" onClick={() => onClear(missedList.map((m) => m.key))}>Clear list</button>
-        </div>
-      </div>
-      <div className="stack sm">
+    <Page icon="repeat" title="Review"
+      actions={<>
+        <button className="btn primary" onClick={() => onDrill(missedList)}>Drill all</button>
+        <button className="btn subtle" onClick={() => onClear(missedList.map((m) => m.key))}>Clear list</button>
+      </>}
+      props={[
+        { icon: "#", label: "To master", value: `${missedList.length} question${missedList.length !== 1 ? "s" : ""}` },
+        { icon: "≡", label: "From tests", value: testCount },
+      ]}>
+      <Callout icon="bulb">Click a question to reveal its answer. Get it right in a drill and it clears itself.</Callout>
+      <div className="toggles">
         {missedList.map((m) => (
-          <div className="miss-card" key={m.key}>
-            <div className="miss-top">
-              <span className="miss-count mono">missed ×{m.missCount}</span>
-              <span className="mono dim">{m.test}</span>
-              <button className="icon-btn" aria-label="Remove from review" onClick={() => onClear([m.key])}>✕</button>
+          <details className="toggle" key={m.key}>
+            <summary>
+              <span className="tri"><Icon name="chevron" size={14} stroke={2} /></span>
+              <div className="toggle-main">
+                <div className="toggle-q">{m.question}</div>
+                <div className="toggle-meta">
+                  <span className="tag red">missed ×{m.missCount}</span>
+                  <span className="dim">{m.test}</span>
+                </div>
+              </div>
+              <button className="icon-btn" aria-label="Remove from review" title="Remove from review"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClear([m.key]); }}><Icon name="x" size={14} /></button>
+            </summary>
+            <div className="toggle-body">
+              {(m.answers && m.answers.length ? m.answers : [m.correctFull]).map((a) => {
+                const isRight = a[0] && a[0].toUpperCase() === m.correct;
+                return <div key={a} className={"ans" + (isRight ? " right" : "")}>{isRight && <Icon name="check" size={14} stroke={2.25} />}{a}</div>;
+              })}
             </div>
-            <div className="miss-q">{m.question}</div>
-            <div className="miss-a mono">correct: <span className="ok-t">{m.correctFull}</span></div>
-          </div>
+          </details>
         ))}
       </div>
-    </div>
+    </Page>
   );
 }
 
 // ============================================================ Stats
 function Stats({ sessions }) {
   if (sessions.length === 0) return (
-    <div className="empty">
-      <div className="empty-title">No sessions yet</div>
-      <div className="empty-sub">Finish a practice or timed session and your history shows up here.</div>
-    </div>
+    <Page icon="chart" title="Stats">
+      <Callout icon="bulb" title="No sessions yet">
+        Finish a practice or timed session and your history shows up here.
+      </Callout>
+    </Page>
   );
 
   const totalQ = sessions.reduce((a, s) => a + s.total, 0);
   const totalC = sessions.reduce((a, s) => a + s.correct, 0);
-  const acc = Math.round((totalC / Math.max(1, totalQ)) * 100);
+  const acc = pctOf(totalC, totalQ);
 
   const byTest = {};
   for (const s of sessions) {
@@ -1054,23 +1378,22 @@ function Stats({ sessions }) {
   const trend = sessions.slice(-12);
 
   return (
-    <div className="stack">
-      <div className="eyebrow">STATS // ALL SESSIONS</div>
+    <Page icon="chart" title="Stats">
       <div className="stat-row">
-        <StatBox label="sessions" value={sessions.length} />
-        <StatBox label="questions answered" value={totalQ} />
-        <StatBox label="overall accuracy" value={acc + "%"} accent />
+        <StatBox label="Sessions" value={sessions.length} />
+        <StatBox label="Questions answered" value={totalQ} />
+        <StatBox label="Overall accuracy" value={acc + "%"} accent />
       </div>
 
       <section>
-        <h2 className="sec-h mono">ACCURACY — LAST {trend.length}</h2>
+        <h2 className="h2">Accuracy <span className="h-count">last {trend.length}</span></h2>
         <div className="trend">
           {trend.map((s) => {
-            const p = Math.round((s.correct / Math.max(1, s.total)) * 100);
+            const p = pctOf(s.correct, s.total);
             return (
               <div className="trend-col" key={s.id} title={`${s.testName} · ${p}%`}>
                 <div className="trend-bar" style={{ height: `${Math.max(4, p)}%` }} />
-                <span className="trend-lab mono">{p}</span>
+                <span className="trend-lab">{p}</span>
               </div>
             );
           })}
@@ -1078,33 +1401,40 @@ function Stats({ sessions }) {
       </section>
 
       <section>
-        <h2 className="sec-h mono">BY TEST</h2>
-        <div className="stack sm">
-          {Object.entries(byTest).map(([name, v]) => (
-            <div className="recent-row" key={name}>
-              <span className="recent-name">{name}</span>
-              <span className="mono dim">{v.n} session{v.n !== 1 && "s"}</span>
-              <span className="mono score">{v.c}/{v.t} · {Math.round((v.c / Math.max(1, v.t)) * 100)}%</span>
+        <h2 className="h2">By test</h2>
+        <div className="table-wrap">
+          <div className="table cols-bytest" role="table">
+            <div className="tr th" role="row">
+              <span role="columnheader"><i className="th-ic">Aa</i>Test</span>
+              <span role="columnheader"><i className="th-ic">#</i>Sessions</span>
+              <span role="columnheader"><i className="th-ic">#</i>Score</span>
+              <span role="columnheader"><i className="th-ic"><Icon name="pie" size={13} /></i>Accuracy</span>
             </div>
-          ))}
+            {Object.entries(byTest).map(([name, v]) => {
+              const p = pctOf(v.c, v.t);
+              return (
+                <div className="tr" role="row" key={name}>
+                  <span role="cell" className="strong">{name}</span>
+                  <span role="cell" className="dim num">{v.n}</span>
+                  <span role="cell" className="num">{v.c}/{v.t}</span>
+                  <span role="cell">
+                    <span className="bar">
+                      <span className="bar-track"><span className="bar-fill" style={{ width: p + "%" }} /></span>
+                      <span className="bar-num">{p}%</span>
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       <section>
-        <h2 className="sec-h mono">HISTORY</h2>
-        <div className="stack sm">
-          {sessions.slice().reverse().map((s) => (
-            <div className="recent-row" key={s.id}>
-              <span className="mono dim">{fmtDate(s.date)}</span>
-              <span className="recent-name">{s.testName}</span>
-              <span className={"mode-tag " + s.mode}>{s.mode}</span>
-              <span className="mono dim">{fmtTime(s.durationSec || 0)}</span>
-              <span className="mono score">{s.correct}/{s.total} · {Math.round((s.correct / Math.max(1, s.total)) * 100)}%</span>
-            </div>
-          ))}
-        </div>
+        <h2 className="h2">History <span className="h-count">{sessions.length}</span></h2>
+        <SessionTable rows={sessions.slice().reverse()} showTime />
       </section>
-    </div>
+    </Page>
   );
 }
 
@@ -1112,192 +1442,384 @@ function StatBox({ label, value, accent }) {
   return (
     <div className={"stat-box" + (accent ? " accent" : "")}>
       <div className="stat-val">{value}</div>
-      <div className="stat-lab mono">{label.toUpperCase()}</div>
+      <div className="stat-lab">{label}</div>
     </div>
   );
 }
 
-function NavBtn({ on, onClick, children }) {
-  return <button className={"nav-btn" + (on ? " on" : "")} onClick={onClick}>{children}</button>;
+function NavBtn({ on, onClick, icon, badge, children }) {
+  return (
+    <button className={"side-item" + (on ? " on" : "")} onClick={onClick} aria-current={on ? "page" : undefined}>
+      <span className="side-ic"><Icon name={icon} /></span>
+      <span className="side-label">{children}</span>
+      {badge != null && <span className="pill">{badge}</span>}
+    </button>
+  );
 }
 
 // ============================================================ Styles
 function StyleBlock() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
+      :root, :root[data-theme="dark"] {
+        --bg: #191919;
+        --side: #202020;
+        --block: #202020;
+        --block-2: #252525;
+        --hover: rgba(255,255,255,.055);
+        --hover-2: rgba(255,255,255,.1);
+        --text: rgba(255,255,255,.87);
+        --text-2: rgba(255,255,255,.55);
+        --text-3: rgba(255,255,255,.33);
+        --line: rgba(255,255,255,.09);
+        --line-2: rgba(255,255,255,.15);
+        --pink: #D9468F;
+        --pink-hover: #E55A9F;
+        --pink-text: #EE85BB;
+        --pink-soft: rgba(226,85,161,.17);
+        --green-text: #62B98A; --green-soft: rgba(82,158,114,.2);
+        --red-text: #EC7470;   --red-soft: rgba(223,84,82,.18);
+        --yellow-text: #D9AA5E; --yellow-soft: rgba(202,152,73,.2);
+        --purple-text: #B395E3; --purple-soft: rgba(154,109,215,.2);
+        --gray-soft: rgba(255,255,255,.08);
+        --code-bg: rgba(135,131,120,.18);
+        --toast-bg: #2F2F2F; --toast-text: rgba(255,255,255,.92);
+        --cover: radial-gradient(120% 140% at 85% 0%, #f08cc0 0%, rgba(240,140,192,0) 55%),
+                 linear-gradient(115deg, #22141d 0%, #4d1d3b 40%, #9b3570 75%, #d9468f 100%);
+        --ring: 0 0 0 1px rgba(255,255,255,.07);
+        --shadow: 0 0 0 1px rgba(255,255,255,.06), 0 10px 28px rgba(0,0,0,.45);
+        color-scheme: dark;
+      }
+      :root[data-theme="light"] {
+        --bg: #FFFFFF;
+        --side: #F7F7F5;
+        --block: #FFFFFF;
+        --block-2: #F7F6F3;
+        --hover: rgba(55,53,47,.06);
+        --hover-2: rgba(55,53,47,.1);
+        --text: #37352F;
+        --text-2: rgba(55,53,47,.65);
+        --text-3: rgba(55,53,47,.42);
+        --line: rgba(55,53,47,.1);
+        --line-2: rgba(55,53,47,.2);
+        --pink: #D13E87;
+        --pink-hover: #B9307A;
+        --pink-text: #AD1A6A;
+        --pink-soft: #FBE4EF;
+        --green-text: #2E7D52; --green-soft: #E2F1E8;
+        --red-text: #C4423D;   --red-soft: #FBE4E2;
+        --yellow-text: #94650F; --yellow-soft: #FBF0D9;
+        --purple-text: #6940A5; --purple-soft: #EEE6F8;
+        --gray-soft: rgba(55,53,47,.08);
+        --code-bg: rgba(135,131,120,.15);
+        --toast-bg: #37352F; --toast-text: #FFFFFF;
+        --cover: radial-gradient(120% 140% at 85% 0%, #ffffff 0%, rgba(255,255,255,0) 55%),
+                 linear-gradient(115deg, #fde7f1 0%, #f8bad7 40%, #ee86b8 75%, #d13e87 100%);
+        --ring: 0 0 0 1px rgba(15,15,15,.08);
+        --shadow: 0 0 0 1px rgba(15,15,15,.06), 0 10px 28px rgba(15,15,15,.12);
+        color-scheme: light;
+      }
       :root {
-        --frost: #EBF0F4;
-        --card: #FFFFFF;
-        --ink: #14212B;
-        --ink-2: #4A5A68;
-        --line: #D3DDE5;
-        --blue: #1E56D6;
-        --blue-soft: #E7EEFC;
-        --gold: #E8A812;
-        --green: #178A5B;
-        --green-soft: #E4F4EC;
-        --red: #D23B3B;
-        --red-soft: #FBEAEA;
-        --console: #101B24;
-        --console-t: #8FB8A8;
-        --r: 10px;
+        --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+        --mono: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; }
+      html, body { margin: 0; background: var(--bg); }
       .app {
-        min-height: 100vh; background: var(--frost); color: var(--ink);
-        font-family: 'Space Grotesk', system-ui, sans-serif;
-        background-image: radial-gradient(var(--line) 1px, transparent 1px);
-        background-size: 26px 26px;
+        display: flex; min-height: 100vh; background: var(--bg); color: var(--text);
+        font-family: var(--font); font-size: 15px; line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
       }
-      .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
-      .dim { color: var(--ink-2); }
+      button { font-family: inherit; }
+      code { font-family: var(--mono); font-size: 85%; background: var(--code-bg); color: var(--pink-text); padding: 1px 5px; border-radius: 4px; }
+      .dim { color: var(--text-2); }
+      .faint { color: var(--text-3); }
+      .strong { font-weight: 500; }
+      .num { font-variant-numeric: tabular-nums; }
+      .dot { color: var(--text-3); }
 
-      .hdr { position: sticky; top: 0; z-index: 10; background: rgba(235,240,244,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
-      .hdr-inner { max-width: 860px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-      .brand { display: flex; gap: 10px; align-items: center; cursor: pointer; }
-      .brand-mark { font-size: 26px; color: var(--blue); line-height: 1; }
-      .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .14em; color: var(--ink-2); }
-      .brand-title { font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
-      .nav { display: flex; gap: 6px; }
-      .nav-btn { border: 1px solid transparent; background: transparent; padding: 7px 12px; border-radius: 8px; font: inherit; font-size: 14px; cursor: pointer; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
-      .nav-btn:hover { color: var(--ink); }
-      .nav-btn.on { background: var(--card); border-color: var(--line); color: var(--ink); font-weight: 500; }
-      .pill { background: var(--gold); color: var(--ink); font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 7px; }
+      /* ---------- sidebar ---------- */
+      .side {
+        width: 248px; flex-shrink: 0; background: var(--side); border-right: 1px solid var(--line);
+        position: sticky; top: 0; height: 100vh; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 2px; padding: 8px 6px 10px;
+      }
+      .ws { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-bottom: 8px; }
+      .ws:hover { background: var(--hover); }
+      .ws:focus-visible { outline: 2px solid var(--pink); outline-offset: -2px; }
+      .ws-icon { width: 24px; height: 24px; border-radius: 6px; background: var(--pink); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; flex-shrink: 0; }
+      .ws-name { font-weight: 600; font-size: 14px; line-height: 1.2; }
+      .ws-sub { font-size: 12px; color: var(--text-3); line-height: 1.3; }
+      .side-nav { display: flex; flex-direction: column; gap: 1px; }
+      .side-item {
+        display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px;
+        border: 0; background: transparent; color: var(--text-2); font-size: 14px;
+        padding: 4px 8px; border-radius: 6px; cursor: pointer; text-align: left;
+      }
+      .side-item:hover { background: var(--hover); color: var(--text); }
+      .side-item.on { background: var(--hover-2); color: var(--text); font-weight: 500; }
+      .side-item:focus-visible { outline: 2px solid var(--pink); outline-offset: -2px; }
+      .side-ic { width: 20px; height: 20px; display: grid; place-items: center; flex-shrink: 0; }
+      .side-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .pill { background: var(--pink); color: #fff; font-size: 11px; font-weight: 600; border-radius: 99px; padding: 0 7px; line-height: 18px; }
+      .side-sec { margin-top: 18px; display: flex; flex-direction: column; gap: 1px; }
+      .side-h { font-size: 12px; font-weight: 500; color: var(--text-3); padding: 2px 8px 4px; }
+      .side-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+      .switch { width: 28px; height: 16px; border-radius: 99px; background: var(--hover-2); position: relative; flex-shrink: 0; transition: background .15s; }
+      .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+      .switch.on { background: var(--pink); }
+      .switch.on::after { transform: translateX(12px); }
 
-      .main { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px; }
-      .loading { padding: 60px 0; text-align: center; color: var(--ink-2); }
-      .stack { display: flex; flex-direction: column; gap: 26px; }
-      .stack.sm { gap: 10px; }
-      .sec-h { font-size: 11px; letter-spacing: .14em; color: var(--ink-2); margin: 0 0 10px; font-weight: 500; }
+      /* ---------- page ---------- */
+      .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .topbar { position: sticky; top: 0; z-index: 5; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 16px; background: var(--bg); font-size: 14px; color: var(--text-2); }
+      .crumb.cur { color: var(--text); }
+      .crumb-sep { color: var(--text-3); }
+      .main { flex: 1; padding-bottom: 110px; }
+      .loading { padding: 90px 0; text-align: center; color: var(--text-2); }
 
-      .dropzone { border: 1.5px dashed var(--line); border-radius: var(--r); background: var(--card); padding: 26px 22px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
-      .dropzone:hover, .dropzone.drag { border-color: var(--blue); background: var(--blue-soft); }
-      .dropzone:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-      .drop-title { font-weight: 700; font-size: 17px; }
-      .drop-sub { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
-      .drop-fmt { font-size: 11px; color: var(--ink-2); margin-top: 10px; opacity: .8; }
+      .cover { height: 190px; background: var(--cover); }
+      .page.compact .cover { height: 92px; }
+      .page-body { max-width: 880px; margin: 0 auto; padding: 0 56px; }
+      .ico { display: inline-block; flex-shrink: 0; vertical-align: -3px; }
+      .page-icon { width: 76px; height: 76px; margin-top: -40px; position: relative; display: grid; place-items: center; border-radius: 14px; background: var(--bg); box-shadow: var(--ring); color: var(--text); }
+      .page.compact .page-icon { width: 52px; height: 52px; margin-top: -26px; border-radius: 10px; }
+      .title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin: 14px 0 4px; }
+      .page-title { font-size: 40px; font-weight: 700; line-height: 1.2; margin: 0; letter-spacing: -.01em; overflow-wrap: anywhere; }
+      .page.compact .page-title { font-size: 30px; }
+      .title-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 4px; }
+      .props { display: flex; flex-direction: column; margin-top: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+      .prop { display: flex; align-items: center; min-height: 32px; font-size: 14px; }
+      .prop-label { width: 160px; flex-shrink: 0; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+      .prop-ic { width: 16px; display: grid; place-items: center; color: var(--text-3); font-size: 13px; }
+      .prop-val { min-width: 0; }
+      .page-content { display: flex; flex-direction: column; gap: 30px; padding-top: 24px; }
+      .h2 { font-size: 20px; font-weight: 600; margin: 0 0 10px; display: flex; align-items: baseline; gap: 8px; }
+      .h3 { font-size: 15px; font-weight: 600; margin: 0 0 10px; color: var(--text-2); }
+      .h-count { font-size: 14px; color: var(--text-3); font-weight: 400; }
 
-      .empty { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 40px 24px; text-align: center; }
-      .empty-title { font-weight: 700; font-size: 18px; }
-      .empty-sub { color: var(--ink-2); font-size: 14px; margin-top: 6px; max-width: 46ch; margin-inline: auto; }
+      /* ---------- callouts ---------- */
+      .callout { display: flex; gap: 12px; align-items: flex-start; padding: 16px 16px 16px 14px; border-radius: 6px; background: var(--block-2); border: 1px solid transparent; }
+      .callout-ic { display: grid; place-items: center; height: 22px; flex-shrink: 0; color: var(--text-2); }
+      .callout-main { min-width: 0; }
+      .callout-title { font-weight: 600; }
+      .callout-sub { color: var(--text-2); font-size: 14px; margin-top: 2px; }
+      .callout-text { font-size: 14.5px; }
+      .callout-fmt { font-family: var(--mono); font-size: 12px; color: var(--text-3); margin-top: 8px; }
+      .callout.drop { border: 1px dashed var(--line-2); cursor: pointer; transition: border-color .15s, background .15s; }
+      .callout.drop:hover, .callout.drop.drag { border-color: var(--pink); background: var(--pink-soft); }
+      .callout.drop:hover .callout-ic, .callout.drop.drag .callout-ic { color: var(--pink-text); }
+      .callout.drop:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
 
-      .test-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-      .test-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-      .test-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
-      .test-name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
-      .test-meta { font-size: 12px; color: var(--ink-2); }
-      .test-actions { display: flex; gap: 8px; margin-top: 10px; }
+      /* ---------- tags ---------- */
+      .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 12.5px; white-space: nowrap; }
+      .tag.pink { background: var(--pink-soft); color: var(--pink-text); }
+      .tag.yellow { background: var(--yellow-soft); color: var(--yellow-text); }
+      .tag.purple { background: var(--purple-soft); color: var(--purple-text); }
+      .tag.red { background: var(--red-soft); color: var(--red-text); }
+      .tag.green { background: var(--green-soft); color: var(--green-text); }
+      .tag.gray { background: var(--gray-soft); color: var(--text-2); }
 
-      .btn { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
-      .btn:hover:not(:disabled) { border-color: var(--ink-2); }
-      .btn:disabled { opacity: .45; cursor: default; }
-      .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 500; }
-      .btn.primary:hover:not(:disabled) { background: #1848B4; }
-      .btn.subtle { background: transparent; }
-      .btn.big { padding: 11px 22px; font-size: 15px; }
-      .btn:focus-visible, .opt:focus-visible, .gcell:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-      .icon-btn { border: none; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 6px; }
-      .icon-btn:hover { color: var(--red); background: var(--red-soft); }
+      /* ---------- buttons ---------- */
+      .btn { font-size: 14px; line-height: 1.2; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; transition: background .12s, border-color .12s; }
+      .btn:hover:not(:disabled) { background: var(--hover); }
+      .btn:disabled { opacity: .4; cursor: default; }
+      .btn.primary { background: var(--pink); border-color: var(--pink); color: #fff; font-weight: 500; }
+      .btn.primary:hover:not(:disabled) { background: var(--pink-hover); border-color: var(--pink-hover); }
+      .btn.subtle { border-color: transparent; color: var(--text-2); }
+      .btn.subtle:hover:not(:disabled) { color: var(--text); }
+      .btn.sm { padding: 5px 10px; font-size: 13px; }
+      .btn.big { padding: 10px 20px; font-size: 15px; }
+      .btn:focus-visible, .opt:focus-visible, .gcell:focus-visible, .icon-btn:focus-visible, .toggle > summary:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+      .icon-btn { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 12px; width: 24px; height: 24px; border-radius: 5px; display: inline-grid; place-items: center; flex-shrink: 0; }
+      .icon-btn:hover { background: var(--red-soft); color: var(--red-text); }
 
-      .quiz-wrap { display: flex; flex-direction: column; gap: 16px; }
-      .quiz-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-      .quiz-test { font-weight: 700; font-size: 20px; }
-      .timer { font-size: 26px; font-weight: 500; background: var(--card); border: 1px solid var(--line); padding: 6px 16px; border-radius: 8px; font-variant-numeric: tabular-nums; }
-      .timer.low { color: var(--red); border-color: var(--red); animation: blink 1s steps(2) infinite; }
-      @keyframes blink { 50% { opacity: .55; } }
+      /* ---------- gallery ---------- */
+      .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+      .g-card { border-radius: 8px; background: var(--block); box-shadow: var(--ring); overflow: hidden; display: flex; flex-direction: column; transition: background .12s, box-shadow .12s; }
+      .g-card:hover { background: var(--block-2); box-shadow: var(--shadow); }
+      .g-preview { height: 88px; position: relative; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--pink-soft), transparent 85%); border-bottom: 1px solid var(--line); }
+      .g-emoji { color: var(--pink-text); display: grid; place-items: center; }
+      .g-preview .icon-btn { position: absolute; top: 6px; right: 6px; background: var(--bg); opacity: 0; transition: opacity .12s; }
+      .g-card:hover .g-preview .icon-btn, .g-preview .icon-btn:focus-visible { opacity: 1; }
+      @media (hover: none) { .g-preview .icon-btn { opacity: 1; } }
+      .g-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+      .g-title { font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+      .g-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 
-      .q-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; box-shadow: 0 1px 3px rgba(20,33,43,.05); }
-      .q-num { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
-      .q-text { font-size: 19px; font-weight: 500; line-height: 1.45; margin-bottom: 18px; }
-      .opts { display: flex; flex-direction: column; gap: 8px; }
-      .opt { display: flex; gap: 12px; align-items: baseline; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--frost); cursor: pointer; transition: border-color .1s, background .1s; color: var(--ink); }
-      .opt:hover:not(:disabled) { border-color: var(--blue); background: var(--blue-soft); }
-      .opt.picked { border-color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px var(--blue); }
-      .opt.right { border-color: var(--green); background: var(--green-soft); }
-      .opt.wrong { border-color: var(--red); background: var(--red-soft); }
-      .opt.off { opacity: .5; }
+      /* ---------- table view ---------- */
+      .table-wrap { overflow-x: auto; border-top: 1px solid var(--line); }
+      .table { min-width: 540px; }
+      .tr { display: grid; align-items: center; border-bottom: 1px solid var(--line); font-size: 14px; }
+      .tr > span { padding: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-right: 1px solid var(--line); }
+      .tr > span:last-child { border-right: 0; }
+      .tr.th { color: var(--text-2); font-size: 13px; }
+      .tr.th > span { padding: 6px 8px; }
+      .tr:not(.th):hover { background: var(--hover); }
+      .th-ic { font-style: normal; color: var(--text-3); margin-right: 6px; font-size: 12px; }
+      .th-ic .ico { vertical-align: -2px; }
+      .cols-4 .tr { grid-template-columns: 150px minmax(140px, 1fr) 100px 130px; }
+      .cols-5 .tr { grid-template-columns: 150px minmax(140px, 1fr) 100px 76px 130px; }
+      .cols-bytest .tr { grid-template-columns: minmax(160px, 1fr) 90px 100px 170px; }
+      .bar { display: flex; align-items: center; gap: 8px; }
+      .bar-track { flex: 1; height: 4px; border-radius: 99px; background: var(--hover-2); overflow: hidden; }
+      .bar-fill { display: block; height: 100%; background: var(--pink); border-radius: 99px; }
+      .bar-num { font-size: 12.5px; color: var(--text-2); min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
+      /* ---------- questions ---------- */
+      .q-card { background: var(--block); border: 1px solid var(--line); border-radius: 8px; padding: 22px; }
+      .q-num { font-size: 12.5px; color: var(--text-2); margin-bottom: 8px; }
+      .q-text { font-size: 19px; font-weight: 600; line-height: 1.45; margin-bottom: 16px; }
+      .opts { display: flex; flex-direction: column; gap: 6px; }
+      .opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; font-size: 15px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; transition: background .1s, border-color .1s; }
+      .opt:hover:not(:disabled) { background: var(--hover); border-color: var(--line-2); }
       .opt:disabled { cursor: default; }
-      .opt-letter { font-weight: 700; font-size: 13px; min-width: 16px; }
-      .opt-text { line-height: 1.4; }
-
-      .verdict { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 8px; font-size: 15px; }
-      .verdict.ok { background: var(--green-soft); color: var(--green); }
-      .verdict.bad { background: var(--red-soft); color: var(--red); }
+      .opt-letter { font-family: var(--mono); font-size: 12px; font-weight: 600; min-width: 22px; height: 22px; border-radius: 4px; background: var(--hover-2); color: var(--text-2); display: inline-grid; place-items: center; flex-shrink: 0; }
+      .opt-text { line-height: 1.45; padding-top: 1px; }
+      .opt.picked { background: var(--pink-soft); border-color: var(--pink); }
+      .opt.picked .opt-letter { background: var(--pink); color: #fff; }
+      .opt.right { background: var(--green-soft); border-color: var(--green-text); }
+      .opt.right .opt-letter { background: var(--green-text); color: var(--bg); }
+      .opt.wrong { background: var(--red-soft); border-color: var(--red-text); }
+      .opt.wrong .opt-letter { background: var(--red-text); color: var(--bg); }
+      .opt.off { opacity: .45; }
+      .verdict { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 6px; font-size: 15px; }
+      .verdict.ok { background: var(--green-soft); color: var(--green-text); }
+      .verdict.bad { background: var(--red-soft); color: var(--red-text); }
       .verdict b { overflow-wrap: anywhere; }
+      .kbd-hint { font-size: 13px; color: var(--text-3); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: -14px; }
+      kbd { font-family: var(--mono); font-size: 11.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line-2); border-bottom-width: 2px; background: var(--block-2); color: var(--text-2); }
 
-      .console { background: var(--console); color: var(--console-t); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-      .c-dash { opacity: .45; }
-      .c-count { color: #E8C767; }
-      .c-hint { margin-left: auto; opacity: .55; }
-
+      .timer { font-family: var(--mono); font-size: 22px; font-weight: 600; padding: 4px 14px; border-radius: 6px; background: var(--pink-soft); color: var(--pink-text); font-variant-numeric: tabular-nums; }
+      .timer.low { background: var(--red-soft); color: var(--red-text); animation: blink 1s steps(2) infinite; }
+      @keyframes blink { 50% { opacity: .55; } }
       .t-nav { display: flex; gap: 8px; margin-top: 18px; align-items: center; flex-wrap: wrap; }
       .spacer { flex: 1; }
-      .grid-nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; }
-      .gcell { font-size: 12px; padding: 7px 0; border-radius: 6px; border: 1px solid var(--line); background: var(--card); cursor: pointer; color: var(--ink-2); }
-      .gcell.done { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); font-weight: 500; }
-      .gcell.cur { outline: 2px solid var(--gold); }
+      .grid-nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; }
+      .gcell { font-family: var(--mono); font-size: 12px; padding: 7px 0; border-radius: 5px; border: 1px solid var(--line); background: transparent; cursor: pointer; color: var(--text-2); }
+      .gcell:hover { background: var(--hover); }
+      .gcell.done { background: var(--pink-soft); border-color: transparent; color: var(--pink-text); font-weight: 600; }
+      .gcell.cur { outline: 2px solid var(--pink); outline-offset: -1px; color: var(--text); }
 
-      .setup { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 30px; max-width: 560px; margin: 20px auto; }
-      .setup-title { margin: 6px 0 8px; font-size: 26px; }
-      .setup-sub { color: var(--ink-2); font-size: 14px; line-height: 1.5; margin: 0 0 22px; }
-      .setup-fields { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+      /* ---------- setup ---------- */
+      .setup-fields { display: flex; gap: 14px; flex-wrap: wrap; }
       .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px; }
-      .field-label { font-size: 10px; letter-spacing: .12em; color: var(--ink-2); }
-      .field input { font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--frost); width: 100%; }
-      .field input:focus { outline: 2px solid var(--blue); border-color: var(--blue); }
-      .setup-actions { display: flex; gap: 10px; justify-content: flex-end; }
+      .field-label { font-size: 13px; color: var(--text-2); }
+      .field input { font: inherit; font-size: 17px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--block-2); color: var(--text); width: 100%; }
+      .field input:focus { outline: 2px solid var(--pink); border-color: transparent; }
+      .row-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
-      .result-hero { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 30px; text-align: center; }
-      .result-score { margin: 14px 0 20px; display: flex; flex-direction: column; gap: 6px; align-items: center; }
-      .big-pct { font-size: 56px; font-weight: 700; letter-spacing: -.02em; color: var(--blue); line-height: 1; }
-      .result-detail { font-size: 13px; color: var(--ink-2); }
-      .result-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+      /* ---------- results ---------- */
+      .result-hero { display: flex; align-items: center; gap: 18px 24px; flex-wrap: wrap; padding: 22px; border-radius: 8px; background: var(--pink-soft); }
+      .big-pct { font-size: 56px; font-weight: 700; color: var(--pink-text); line-height: 1; letter-spacing: -.02em; }
+      .result-detail { color: var(--text-2); font-size: 14px; margin-top: 6px; }
+      .result-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+      .miss-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+      .miss-row { padding: 12px 4px; border-bottom: 1px solid var(--line); }
+      .miss-q { font-weight: 500; line-height: 1.45; }
+      .miss-a { font-size: 13.5px; color: var(--text-2); margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+      .ok-t { color: var(--green-text); font-weight: 500; }
+      .bad-t { color: var(--red-text); font-weight: 500; }
 
-      .miss-card { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--red); border-radius: 8px; padding: 14px 16px; }
-      .miss-top { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; font-size: 12px; }
-      .miss-top .icon-btn { margin-left: auto; }
-      .miss-count { color: var(--red); font-weight: 500; }
-      .miss-q { font-size: 15px; font-weight: 500; line-height: 1.4; }
-      .miss-a { font-size: 12.5px; margin-top: 6px; color: var(--ink-2); }
-      .ok-t { color: var(--green); font-weight: 500; }
-      .bad-t { color: var(--red); font-weight: 500; }
+      /* ---------- toggles ---------- */
+      .toggles { display: flex; flex-direction: column; gap: 2px; margin-top: -10px; }
+      .toggle { border-radius: 6px; }
+      .toggle[open] { background: var(--block-2); }
+      .toggle > summary { list-style: none; display: flex; align-items: flex-start; gap: 6px; padding: 7px 6px; border-radius: 6px; cursor: pointer; }
+      .toggle > summary::-webkit-details-marker { display: none; }
+      .toggle > summary:hover { background: var(--hover); }
+      .tri { width: 22px; height: 23px; display: inline-grid; place-items: center; color: var(--text-2); flex-shrink: 0; transition: transform .15s; }
+      .toggle[open] .tri { transform: rotate(90deg); }
+      .toggle-main { flex: 1; min-width: 0; }
+      .toggle-q { line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
+      .toggle-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; margin-top: 4px; }
+      .toggle-body { padding: 2px 12px 14px 34px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--text-2); }
+      .ans { padding: 4px 8px; border-radius: 4px; overflow-wrap: anywhere; }
+      .ans.right { background: var(--green-soft); color: var(--green-text); font-weight: 500; display: flex; gap: 6px; align-items: flex-start; }
+      .ans.right .ico { margin-top: 3px; }
 
-      .review-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-      .review-actions { display: flex; gap: 8px; }
-
-      .recent { display: flex; flex-direction: column; gap: 8px; }
-      .recent-row { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; font-size: 13.5px; flex-wrap: wrap; }
-      .recent-name { font-weight: 500; }
-      .score { margin-left: auto; font-weight: 500; }
-      .mode-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .08em; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; }
-      .mode-tag.practice { background: var(--blue-soft); color: var(--blue); }
-      .mode-tag.timed { background: #FBF3DC; color: #9A7008; }
-      .mode-tag.drill { background: var(--red-soft); color: var(--red); }
-
+      /* ---------- stats ---------- */
       .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-      .stat-box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
-      .stat-box.accent { border-color: var(--blue); background: var(--blue-soft); }
-      .stat-val { font-size: 32px; font-weight: 700; letter-spacing: -.02em; }
-      .stat-lab { font-size: 10px; letter-spacing: .12em; color: var(--ink-2); margin-top: 4px; }
-
-      .trend { display: flex; gap: 8px; align-items: flex-end; height: 120px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
+      .stat-box { border-radius: 8px; padding: 16px 18px; background: var(--block-2); }
+      .stat-box.accent { background: var(--pink-soft); }
+      .stat-box.accent .stat-val { color: var(--pink-text); }
+      .stat-val { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+      .stat-lab { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+      .trend { display: flex; gap: 8px; align-items: flex-end; height: 160px; padding: 16px 14px 10px; border-radius: 8px; background: var(--block-2); }
       .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-      .trend-bar { width: 100%; max-width: 34px; background: var(--blue); border-radius: 4px 4px 0 0; min-height: 4px; }
-      .trend-lab { font-size: 10px; color: var(--ink-2); }
+      .trend-bar { width: 100%; max-width: 34px; background: var(--pink); border-radius: 4px 4px 0 0; min-height: 4px; opacity: .85; transition: opacity .12s; }
+      .trend-col:hover .trend-bar { opacity: 1; }
+      .trend-lab { font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
-      .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--console); color: #E5EEF2; padding: 10px 18px; border-radius: 8px; font-size: 13px; box-shadow: 0 6px 20px rgba(16,27,36,.3); z-index: 50; max-width: 90vw; }
+      /* ---------- library columns + how-to ---------- */
+      .page.wide .page-body { max-width: 1120px; }
+      .cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 44px; align-items: start; }
+      .col-main { display: flex; flex-direction: column; gap: 30px; min-width: 0; }
+      .howto { padding-left: 24px; border-left: 1px solid var(--line); }
+      .howto-h { font-size: 15px; font-weight: 600; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+      .howto-h .ico { color: var(--pink-text); }
+      .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+      .steps > li { counter-increment: step; position: relative; padding-left: 30px; }
+      .steps > li::before { content: counter(step); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: var(--pink-soft); color: var(--pink-text); font-size: 11.5px; font-weight: 600; display: grid; place-items: center; }
+      .step-t { font-weight: 600; font-size: 14px; }
+      .step-d { font-size: 13.5px; color: var(--text-2); margin-top: 2px; line-height: 1.55; }
+      .step-d b { color: var(--text); font-weight: 500; }
+      .step-d kbd { font-size: 10.5px; padding: 0 5px; }
+      .codeblock { font-family: var(--mono); font-size: 11.5px; line-height: 1.55; background: var(--block-2); color: var(--text-2); border-radius: 6px; padding: 10px 12px; margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .howto-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 18px; padding: 10px 12px; border-radius: 6px; background: var(--block-2); font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+      .howto-note .ico { margin-top: 2px; }
+      .ai-box { margin-top: 10px; border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 12px; background: var(--pink-soft); }
+      .ai-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+      .ai-label { font-size: 13px; font-weight: 600; color: var(--pink-text); display: flex; align-items: center; gap: 6px; }
+      .ai-top .btn { display: inline-flex; align-items: center; gap: 6px; background: var(--bg); }
+      .ai-top .btn.primary { background: var(--pink); }
+      .ai-details { margin-top: 8px; }
+      .ai-details > summary { cursor: pointer; font-size: 12.5px; color: var(--text-2); list-style: none; display: inline-flex; align-items: center; gap: 4px; }
+      .ai-details > summary::-webkit-details-marker { display: none; }
+      .ai-details > summary::before { content: "+"; display: inline-block; width: 12px; text-align: center; font-family: var(--mono); }
+      .ai-details[open] > summary::before { content: "−"; }
+      .ai-details > summary:hover { color: var(--text); }
+      .ai-details > summary:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; border-radius: 4px; }
+      .ai-pre { max-height: 260px; overflow-y: auto; background: var(--bg); user-select: text; }
+      .step-warn { font-size: 12.5px; color: var(--text-3); margin-top: 8px; }
+      @media (max-width: 1060px) {
+        .cols { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+        .howto { position: static; padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+      }
+
+      .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-text); padding: 10px 16px; border-radius: 8px; font-size: 14px; box-shadow: var(--shadow); z-index: 50; max-width: 90vw; }
 
       @media (prefers-reduced-motion: reduce) {
         * { animation: none !important; transition: none !important; }
       }
-      @media (max-width: 560px) {
-        .main { padding: 20px 14px 60px; }
-        .q-card, .setup, .result-hero { padding: 18px; }
+      @media (max-width: 760px) {
+        .app { flex-direction: column; }
+        .side {
+          position: sticky; top: 0; z-index: 20; width: 100%; height: auto;
+          flex-direction: row; align-items: center; gap: 2px; padding: 6px 10px;
+          border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto;
+        }
+        .ws { margin: 0 4px 0 0; padding: 4px; }
+        .ws-text, .side-sec { display: none; }
+        .side-nav { flex-direction: row; gap: 2px; }
+        .side-nav .side-ic { display: none; }
+        .side-item { width: auto; white-space: nowrap; padding: 4px 8px; }
+        .side-label { overflow: visible; }
+        .side-foot { margin: 0 0 0 auto; padding: 0; border: 0; }
+        .side-foot .side-label { display: none; }
+        .topbar { display: none; }
+        .page-body { padding: 0 16px; }
+        .cover { height: 112px; }
+        .page.compact .cover { height: 60px; }
+        .page-icon { width: 60px; height: 60px; margin-top: -30px; border-radius: 12px; }
+        .page.compact .page-icon { width: 46px; height: 46px; margin-top: -22px; }
+        .page-title { font-size: 30px; }
+        .page.compact .page-title { font-size: 24px; }
+        .prop-label { width: 118px; }
+        .q-card { padding: 16px; }
         .q-text { font-size: 17px; }
         .big-pct { font-size: 44px; }
+        .result-actions { margin-left: 0; }
       }
     `}</style>
   );
