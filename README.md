@@ -4,7 +4,7 @@ A comprehensive study and testing application designed to help FBLA members prep
 
 **[Live Demo: ](https://b0bqa.github.io/fbla-practice/)**
 
----
+--- Important Note: The code for the program was created using AI
 
 ## Achievements & Recognition
 
